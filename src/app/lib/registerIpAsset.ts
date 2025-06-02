@@ -1,112 +1,220 @@
-// // app/lib/registerIpAsset.ts
-// import crypto from "crypto";
-// import { getStoryClient } from "./storyClient";
-// import { uploadFileToIpfs } from "./uploadToipfs";
-
-// export async function registerIpAsset(imageFile: File) {
-//   const client = await getStoryClient();
-
-//   const imageIpfsUri = await uploadFileToIpfs(imageFile);
-
-//   const metadata = {
-//     name: "My NFT",
-//     description: "Image IP NFT",
-//     image: imageIpfsUri,
-//   };
-
-//   const ipMetadata = {
-//     title: "Image IP",
-//     description: "Original content",
-//     image: imageIpfsUri,
-//     creators: [
-//       {
-//         name: "Vivek",
-//         address: client.account.address,
-//         contributionPercent: 100,
-//       },
-//     ],
-//     createdAt: `${Date.now()}`,
-//   };
-
-//   const metadataStr = JSON.stringify(metadata);
-//   const ipMetadataStr = JSON.stringify(ipMetadata);
-
-//   const nftMetadataHash = crypto.createHash("sha256").update(metadataStr).digest("hex");
-//   const ipMetadataHash = crypto.createHash("sha256").update(ipMetadataStr).digest("hex");
-
-//   const tx = await client.ipAsset.register({
-//     nftMetadataURI: imageIpfsUri,
-//     nftMetadataHash: `0x${nftMetadataHash}`,
-//     ipMetadataURI: imageIpfsUri,
-//     ipMetadataHash: `0x${ipMetadataHash}`,
-//   });
-
-//   console.log("TX Hash:", tx.hash);
-//   await tx.wait();
-//   console.log("✅ IP Registered!");
-// }
-
-
-
-// app/lib/registerIpAsset.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import crypto from "crypto";
-import { getStoryClient } from "./storyClient";
-import { uploadFileToIpfs } from "./uploadToipfs";
+import { getStoryClient, publicClient } from "./storyClient";
+import { uploadFileToIpfs, uploadJSONToIpfs } from "./uploadToIpfs";
+import { keccak256, toHex, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { aeneid } from "viem/chains";
 
-export async function registerIpAsset(imageFile: File) {
-  const { client, address } = await getStoryClient();
-
-  // Upload the image to IPFS
-  const imageIpfsUri = await uploadFileToIpfs(imageFile);
-
-  // Create metadata
-  const metadata = {
-    name: "My NFT",
-    description: "Image IP NFT",
-    image: imageIpfsUri,
-  };
-
-  const ipMetadata = {
-    title: "Image IP",
-    description: "Original content",
-    image: imageIpfsUri,
-    creators: [
-      {
-        name: "Vivek",
-        address: address,
-        contributionPercent: 100,
-      },
+const erc20Abi = [
+  {
+    constant: true,
+    inputs: [{ name: "owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    createdAt: `${Date.now()}`,
-  };
+    name: "approve",
+    outputs: [{ name: "success", type: "bool" }],
+    type: "function",
+  },
+];
 
-  const metadataStr = JSON.stringify(metadata);
-  const ipMetadataStr = JSON.stringify(ipMetadata);
+export async function registerIpAssetSimple(imageFile: File) {
+  try {
+    console.log("Starting IP registration...");
 
-  const nftMetadataHash = crypto.createHash("sha256").update(metadataStr).digest("hex");
-  const ipMetadataHash = crypto.createHash("sha256").update(ipMetadataStr).digest("hex");
+    if (!imageFile) {
+      throw new Error("Image file is required");
+    }
 
-  // Mint + Register IP asset
-  const tx = await client.ipAsset.mintAndRegisterIpAssetWithPilTerms({
-    spgNftContract: "0xYourNFTContractAddress", // Replace with actual NFT contract address
-    allowDuplicates: true,
-    licenseTermsData: [
-      {
-        terms: {
-          commercialUse: true,
-          derivativeWorks: true,
-          royaltyPercentage: 5,
-          // ... other license fields
+    const { client, address, walletClient } = await getStoryClient();
+
+    if (!client) throw new Error("Story client not initialized");
+    if (!address) throw new Error("Wallet address not found");
+    if (!walletClient) throw new Error("Wallet client not initialized");
+
+    console.log("Connected address:", address);
+
+    const account = process.env.PRIVATE_KEY as `0x${string}`;
+    const configuredWalletClient = createWalletClient({
+      chain: aeneid,
+      transport: http("https://aeneid.storyrpc.io/"),
+      account,
+    });
+
+    const balance = await publicClient.getBalance({ address });
+    console.log("IP Account balance:", balance.toString());
+    if (balance < BigInt(1e16)) { // Require at least 0.01 AEN for gas
+      throw new Error("Insufficient native balance. Get AEN tokens from https://faucet.aeneid.storyrpc.io/");
+    }
+
+    const feeTokenAddress = "0x1514000000000000000000000000000000000000" as `0x${string}`;
+    const spgNftContract = "0x5dC881dDA4e4a8d312be3544AD13118D1a04Cb17" as `0x${string}`;
+    const feeTokenBalance = await publicClient.readContract({
+      address: feeTokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+    });
+    console.log("WIP Balance:", feeTokenBalance.toString());
+    if (feeTokenBalance === 0n) {
+      throw new Error("Insufficient $WIP balance. Get tokens from https://faucet.story.foundation/");
+    }
+
+    const feeAmount = BigInt(1e18); // 1 $WIP (adjust based on contract requirements)
+    console.log("Approving $WIP spend...");
+    const approveTx = await configuredWalletClient.writeContract({
+      address: feeTokenAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [spgNftContract, feeAmount],
+      account,
+    });
+    const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
+    console.log("Approval successful:", approveTx);
+
+    const updatedFeeTokenBalance = await publicClient.readContract({
+      address: feeTokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address],
+    });
+    console.log("Updated WIP balance:", updatedFeeTokenBalance.toString());
+
+    console.log("Uploading image to IPFS...");
+    const imageIpfsUri = await uploadFileToIpfs(imageFile);
+    if (!imageIpfsUri) throw new Error("Failed to upload image to IPFS");
+
+    console.log("Image uploaded:", imageIpfsUri);
+
+    const nftMetadata = {
+      name: "My IP NFT",
+      description: "This NFT represents ownership of my IP asset",
+      image: imageIpfsUri,
+    };
+
+    const ipMetadata = {
+      title: "My IP Asset",
+      description: "Original creative content",
+      image: imageIpfsUri,
+      mediaUrl: imageIpfsUri,
+      mediaType: imageFile.type || "image/jpeg",
+      creators: [
+        {
+          name: "Creator",
+          address: address,
+          description: "Original creator",
+          contributionPercent: 100,
         },
-      },
-    ],
-    ipMetadata: {
-      ipMetadataURI: imageIpfsUri,
-      ipMetadataHash: `0x${ipMetadataHash}`,
-      nftMetadataURI: imageIpfsUri,
-      nftMetadataHash: `0x${nftMetadataHash}`,
-    },
-  });
+      ],
+      createdAt: new Date().toISOString(),
+    };
 
-  console.log("Transaction:", tx);
+    console.log("Uploading metadata to IPFS...");
+    const nftMetadataUri = await uploadJSONToIpfs(nftMetadata);
+    const ipMetadataUri = await uploadJSONToIpfs(ipMetadata);
+
+    if (!nftMetadataUri || !ipMetadataUri) {
+      throw new Error("Failed to upload metadata to IPFS");
+    }
+
+    const nftMetadataHash = keccak256(toHex(JSON.stringify(nftMetadata)));
+    const ipMetadataHash = keccak256(toHex(JSON.stringify(ipMetadata)));
+
+    console.log("Parameters for mintAndRegisterIp:", {
+      spgNftContract,
+      ipMetadata: {
+        ipMetadataURI: ipMetadataUri,
+        ipMetadataHash,
+        nftMetadataURI: nftMetadataUri,
+        nftMetadataHash,
+      },
+      allowDuplicates: true,
+    });
+
+    try {
+      console.log("Simulating mintAndRegisterIp...");
+      await publicClient.simulateContract({
+        address: "0x77319B4031e6eF1250907aa00018B8B1c67a244b", // IPAssetRegistry
+        abi: client.ipAsset.abi,
+        functionName: "mintAndRegisterIp",
+        args: [
+          spgNftContract,
+          address,
+          {
+            ipMetadataURI: ipMetadataUri,
+            ipMetadataHash,
+            nftMetadataURI: nftMetadataUri,
+            nftMetadataHash,
+          },
+          true,
+        ],
+        account,
+      });
+      console.log("Simulation successful");
+    } catch (simError) {
+      console.error("Simulation failed:", simError);
+    }
+
+    console.log("Registering IP Asset on Story Protocol...");
+    const response = await client.ipAsset.mintAndRegisterIp({
+      spgNftContract,
+      ipMetadata: {
+        ipMetadataURI: ipMetadataUri,
+        ipMetadataHash: ipMetadataHash as `0x${string}`,
+        nftMetadataURI: nftMetadataUri,
+        nftMetadataHash: nftMetadataHash as `0x${string}`,
+      },
+      allowDuplicates: true,
+      txOptions: {
+        waitForTransaction: true,
+        gas: BigInt(5000000), // Increased gas limit
+      },
+    }, { walletClient: configuredWalletClient });
+
+    if (!response) throw new Error("No response received from Story Protocol");
+
+    const txHash = response.txHash?.toString() || "N/A";
+    const ipId = response.ipId?.toString() || "N/A";
+    const tokenId = response.tokenId?.toString() || "N/A";
+
+    console.log("✅ IP Asset registered successfully!");
+    console.log(`📝 Transaction Hash: ${txHash}`);
+    console.log(`🆔 IP Asset ID: ${ipId}`);
+    console.log(`🎫 Token ID: ${tokenId}`);
+
+    if (ipId !== "N/A") {
+      console.log(`🔍 View on Explorer: https://aeneid.explorer.story.foundation/ipa/${ipId}`);
+    }
+
+    return {
+      success: true,
+      txHash,
+      ipId,
+      tokenId,
+      explorerUrl: ipId !== "N/A" ? `https://aeneid.explorer.story.foundation/ipa/${ipId}` : null,
+    };
+  } catch (error: any) {
+    console.error("❌ Error registering IP Asset:", error);
+    if (error.cause?.name === "ContractFunctionRevertedError" && error.cause?.transactionHash) {
+      try {
+        const receipt = await publicClient.getTransactionReceipt({
+          hash: error.cause.transactionHash,
+        });
+        console.error("Revert reason:", receipt.logs);
+      } catch (receiptError) {
+        console.error("Could not fetch transaction receipt:", receiptError);
+      }
+    }
+    const errorMessage = error?.message || error?.toString() || "Unknown error";
+    throw new Error(errorMessage);
+  }
 }
