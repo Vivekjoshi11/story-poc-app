@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // // /* eslint-disable @typescript-eslint/no-unused-vars */
 
 // "use client";
@@ -335,7 +336,6 @@ const IPRegistrationComponent = () => {
         result = error; // fallback
       }
     } finally {
-      // ✅ Update these regardless of success or error
       if (result) {
         if (result.approveTx) setApproveTxHash(result.approveTx);
         if (result.registerTx) setRegisterTxHash(result.registerTx);

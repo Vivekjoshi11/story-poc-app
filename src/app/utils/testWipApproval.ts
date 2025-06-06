@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // testWipApproval.ts - Run this first to test if WIP approval is working
 import { getStoryClient, publicClient } from "../lib/storyClient";
 import { parseEther, formatEther } from "viem";
 
 const WIP_CONTRACT_ADDRESS = "0x1514000000000000000000000000000000000000" as `0x${string}`;
 // const WIP_CONTRACT_ADDRESS = "0xB83639aF55F03108091020b7c75a46e2eaAb4FfA" as `0x${string}`;
-const SPG_NFT_CONTRACT = "0x5dC881dDA4e4a8d312be3544AD13118D1a04Cb17" as `0x${string}`;
-// const SPG_NFT_CONTRACT = "0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc" as `0x${string}`;
+// const SPG_NFT_CONTRACT = "0x5dC881dDA4e4a8d312be3544AD13118D1a04Cb17" as `0x${string}`;
+const SPG_NFT_CONTRACT = "0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc" as `0x${string}`;
 
 const WIP_ABI = [
   {

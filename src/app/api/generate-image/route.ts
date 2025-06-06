@@ -14,22 +14,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // const apiKey = process.env.GOENHANCE_API_KEY;
     const apiKey="sk-wMeUGI6UV7pXY_gXJFSGcIRk15qTBfQ1EK0FpheFPj3SCF7g";
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
-    // Make request to GoEnhance AI text-to-image endpoint
     const response = await axios.post(
-      'https://api.goenhance.ai/api/v1/text2image/generate', // Verify exact endpoint in docs
+      'https://api.goenhance.ai/api/v1/text2image/generate', 
       {
         args: {
           prompt,
-          model: 'default', // Adjust based on GoEnhance AI model list
-          resolution: '512x512', // Example resolution; adjust as needed
+          model: 'default', 
+          resolution: '512x512', 
         },
-        type: 'mx-text-to-image', // Assumed type; verify in docs
+        type: 'mx-text-to-image', 
       },
       {
         headers: {
@@ -39,7 +37,6 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Assuming the API returns an image URL in response.data.data.url
     const imageUrl = response.data.data?.url;
     if (!imageUrl) {
       return NextResponse.json({ error: 'No image URL returned' }, { status: 500 });
