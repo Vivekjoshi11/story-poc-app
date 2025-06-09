@@ -34,6 +34,7 @@ import RegisterDerivativeForm from './components/RegisterDerivativeCommercialFor
 import MintLicenseForm from './components/MintLicenseForm';
 import ImageGenerator from './components/imageGenerator';
 import RegisterDerivativeNonCommercial from './components/RegisterDerivativeNonCommercial';
+// import RegisterCustom from './components/RegisterCustom';
 // import MintDerivativeForm from './components/MintDerivativeForm';
 
 export default function Home() {
@@ -41,6 +42,7 @@ export default function Home() {
 
   const tabs = [
     { id: 'register', label: 'Register IP Asset', component: <RegisterForm /> },
+    // { id: 'register-custom', label: 'Register IP Asset custom', component: <RegisterCustom /> },
     { id: 'derivative', label: 'Register Derivative', component: <RegisterDerivativeForm /> },
     { id: 'mint-license', label: 'Mint License', component: <MintLicenseForm /> },
     {id: 'derivative-noncom', label: 'Register Derivative non com', component: <RegisterDerivativeNonCommercial />},
