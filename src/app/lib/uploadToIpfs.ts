@@ -1,48 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/lib/uploadToIpfs.ts
-export async function uploadFileToIpfs(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
+import { PinataSDK } from 'pinata-web3';
 
-  const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_PINATA_JWT}`,
-    },
-    body: formData,
-  });
+const pinata = new PinataSDK({
+  pinataJwt: process.env.PINATA_JWT,
+});
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`IPFS upload failed: ${errorText}`);
+export async function uploadJSONToIPFS(jsonMetadata: any): Promise<string> {
+  try {
+    const { IpfsHash } = await pinata.upload.json(jsonMetadata);
+    return IpfsHash;
+  } catch (error) {
+    console.error('Error uploading JSON to IPFS:', error);
+    throw new Error('Failed to upload JSON to IPFS');
   }
-
-  const json = await res.json();
-  console.log('File uploaded to IPFS:', json);
-  return `https://ipfs.io/ipfs/${json.IpfsHash}`;
-}
-
-export async function uploadJSONToIpfs(metadata: any): Promise<string> {
-  const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_PINATA_JWT}`,
-    },
-    body: JSON.stringify({
-      pinataContent: metadata,
-      pinataMetadata: {
-        name: `metadata-${Date.now()}.json`,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`JSON upload to IPFS failed: ${errorText}`);
-  }
-
-  const json = await res.json();
-  console.log('JSON uploaded to IPFS:', json);
-  return `https://ipfs.io/ipfs/${json.IpfsHash}`;
 }
