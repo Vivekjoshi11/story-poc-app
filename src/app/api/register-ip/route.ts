@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import { client } from '../../lib/config';
 import { uploadJSONToIPFS } from '../../lib/uploadToIpfs';
 import { createCommercialRemixTerms, SPGNFTContractAddress } from '../../lib/utils';
 import { createHash } from 'crypto';
 import { IpMetadata } from '@story-protocol/core-sdk';
+import { networkInfo } from '../../lib/config';
 
 // Utility function to convert BigInt to string in an object
 function serializeBigInt(obj: any): any {
@@ -36,10 +37,10 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 1. Generate IP Metadata
-    const ipMetadata: IpMetadata = client.ipAsset.generateIpMetadata({
+    const ipMetadata: IpMetadata = {
       title,
       description,
-      createdAt,
+      createdAt: createdAt, // Keep as string to match IpMetadata type
       creators: [
         {
           name: creatorName,
@@ -47,12 +48,15 @@ export async function POST(request: NextRequest) {
           contributionPercent: 100,
         },
       ],
-      image: imageUrl,
-      imageHash,
-      mediaUrl,
-      mediaHash,
-      mediaType,
-    });
+      media: [
+        {
+          url: mediaUrl,
+          mimeType: mediaType,
+          name: ''
+        },
+      ],
+      image: imageUrl, // Use URL string directly
+    };
 
     // 2. Generate NFT Metadata
     const nftMetadata = {
@@ -68,42 +72,41 @@ export async function POST(request: NextRequest) {
     };
 
     // 3. Upload Metadata to IPFS
-    const ipIpfsHash = await uploadJSONToIPFS(ipMetadata);
-    const ipHash = createHash('sha256').update(JSON.stringify(ipMetadata)).digest('hex');
+    const ipMetadataForIpfs = {
+      ...ipMetadata,
+      imageHash, // Include hashes in IPFS metadata
+      media: [
+        {
+          url: mediaUrl,
+          mimeType: mediaType,
+          hash: mediaHash,
+        },
+      ],
+    };
+    const ipIpfsHash = await uploadJSONToIPFS(ipMetadataForIpfs);
+    const ipHash = createHash('sha256').update(JSON.stringify(ipMetadataForIpfs)).digest('hex');
     const nftIpfsHash = await uploadJSONToIPFS(nftMetadata);
     const nftHash = createHash('sha256').update(JSON.stringify(nftMetadata)).digest('hex');
 
-    // 4. Register IP Asset
-    const response = await client.ipAsset.mintAndRegisterIpAssetWithPilTerms({
-      spgNftContract: SPGNFTContractAddress,
-      licenseTermsData: [
-        {
-          terms: createCommercialRemixTerms({ defaultMintingFee: 1, commercialRevShare: 5 }),
-        },
-      ],
-      ipMetadata: {
-        ipMetadataURI: `https://ipfs.io/ipfs/${ipIpfsHash}`,
-        ipMetadataHash: `0x${ipHash}`,
-        nftMetadataURI: `https://ipfs.io/ipfs/${nftIpfsHash}`,
-        nftMetadataHash: `0x${nftHash}`,
-      },
-      txOptions: { waitForTransaction: true },
-    });
+    // 4. Prepare transaction data for client-side execution
+    const terms = createCommercialRemixTerms({ defaultMintingFee: 1, commercialRevShare: 5 });
 
-    // Serialize response to handle BigInt
-    const serializedResponse = serializeBigInt({
+    // Serialize terms to handle BigInt values
+    const serializedTerms = serializeBigInt(terms);
+
+    return NextResponse.json({
       success: true,
-      txHash: response.txHash,
-      ipId: response.ipId,
-      licenseTermsIds: response.licenseTermsIds,
-      explorerUrl: `${process.env.PROTOCOL_EXPLORER}/ipa/${response.ipId}`,
+      spgNftContract: SPGNFTContractAddress,
+      terms: serializedTerms,
+      ipMetadataURI: `https://ipfs.io/ipfs/${ipIpfsHash}`,
+      ipMetadataHash: `0x${ipHash}`,
+      nftMetadataURI: `https://ipfs.io/ipfs/${nftIpfsHash}`,
+      nftMetadataHash: `0x${nftHash}`,
     });
-
-    return NextResponse.json(serializedResponse);
-  } catch (error) {
-    console.error('Error registering IP Asset:', error);
+  } catch (error: any) {
+    console.error('Error preparing IP Asset registration:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to register IP Asset' },
+      { success: false, error: `Failed to prepare IP Asset registration: ${error.message}` },
       { status: 500 }
     );
   }
