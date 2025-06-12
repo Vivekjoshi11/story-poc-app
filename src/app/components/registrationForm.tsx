@@ -713,7 +713,7 @@ export default function RegisterForm() {
       );
 
       setResult(serializedResponse);
-    } catch (err) {
+    } catch (err:any) {
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);

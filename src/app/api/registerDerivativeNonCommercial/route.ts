@@ -1,50 +1,49 @@
-import { NextResponse } from 'next/server';
-import { Address, toHex } from 'viem';
-import { SPGNFTContractAddress, NonCommercialSocialRemixingTermsId } from '../../lib/utils';
-import { client } from '../../lib/config';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from 'next/server';
 
-// Define the expected request body structure
-interface RegisterRequestBody {
-  ipMetadataURI: string;
-  ipMetadataHash: string;
-  nftMetadataHash: string;
-  nftMetadataURI: string;
+// Utility function to convert BigInt to string in an object
+function serializeBigInt(obj: any): any {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    )
+  );
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body: RegisterRequestBody = await request.json();
+    const body = await request.json();
+    const {
+      ipMetadataURI,
+      ipMetadataHash,
+      nftMetadataURI,
+      nftMetadataHash,
+      walletAddress,
+    } = body;
 
-    // Validate request body
-    if (!body.ipMetadataURI || !body.ipMetadataHash || !body.nftMetadataHash || !body.nftMetadataURI) {
-      return NextResponse.json({ error: 'Missing required metadata fields' }, { status: 400 });
+    // Validate required fields
+    if (!ipMetadataURI || !ipMetadataHash || !nftMetadataURI || !nftMetadataHash || !walletAddress) {
+      throw new Error('Missing required fields in form data');
     }
 
-    const PARENT_IP_ID: Address = '0x641E638e8FCA4d4844F509630B34c9D524d40BE5';
-
-    // Mint and register IP asset as a derivative
-    const childIp = await client.ipAsset.mintAndRegisterIpAndMakeDerivative({
-      spgNftContract: SPGNFTContractAddress,
-      derivData: {
-        parentIpIds: [PARENT_IP_ID],
-        licenseTermsIds: [NonCommercialSocialRemixingTermsId],
-      },
-      ipMetadata: {
-        ipMetadataURI: body.ipMetadataURI,
-        ipMetadataHash: toHex(body.ipMetadataHash, { size: 32 }),
-        nftMetadataHash: toHex(body.nftMetadataHash, { size: 32 }),
-        nftMetadataURI: body.nftMetadataURI,
-      },
-      txOptions: { waitForTransaction: true },
-    });
-
-    return NextResponse.json({
+    // Prepare response for client-side transaction
+    const response = {
       success: true,
-      transactionHash: childIp.txHash,
-      ipaId: childIp.ipId,
+      ipMetadataURI,
+      ipMetadataHash,
+      nftMetadataURI,
+      nftMetadataHash,
+    };
+
+    return NextResponse.json(serializeBigInt(response));
+  } catch (error: any) {
+    console.error('Error preparing derivative IP Asset registration:', {
+      message: error.message,
+      stack: error.stack,
     });
-  } catch (error) {
-    console.error('Error registering derivative:', error);
-    return NextResponse.json({ error: 'Failed to register derivative' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: `Failed to prepare derivative IP Asset registration: ${error.message}` },
+      { status: 500 }
+    );
   }
 }

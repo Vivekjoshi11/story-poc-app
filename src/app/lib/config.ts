@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { aeneid, mainnet, StoryClient, StoryConfig } from '@story-protocol/core-sdk';
 import { Chain, createPublicClient, http } from 'viem';

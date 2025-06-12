@@ -1,7 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAccount, useWalletClient } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { createStoryClient } from '../lib/config';
+import { StoryClient } from '@story-protocol/core-sdk';
 
 export default function EditIpForm() {
   const [formData, setFormData] = useState({
@@ -25,6 +30,10 @@ export default function EditIpForm() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Wagmi hooks
+  const { address, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -71,32 +80,93 @@ export default function EditIpForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isConnected || !address || !walletClient) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
+      // Fetch metadata and IPFS hashes from the server
       const response = await fetch('/api/edit-ip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          walletAddress: address,
+        }),
       });
       const data = await response.json();
-      if (data.success) {
-        setResult(data);
-      } else {
-        setError(data.error || 'Failed to update IP Asset');
+
+      if (!data.success) {
+        setError(data.error);
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      setError('Error updating IP Asset: ' + (err instanceof Error ? err.message : 'Unknown error'));
+
+      // Initialize StoryClient with walletClient
+      const client = createStoryClient(walletClient);
+
+      // Perform the transaction client-side
+      const txResponse = await client.ipAccount.setIpMetadata({
+        ipId: formData.ipId,
+        metadataURI: data.metadataURI,
+        metadataHash: data.metadataHash,
+        txOptions: {
+          waitForTransaction: true,
+          wallet: walletClient,
+        },
+      });
+
+      // Serialize response to handle BigInt
+      const serializedResponse = JSON.parse(
+        JSON.stringify(
+          {
+            success: true,
+            txHash: txResponse.txHash,
+          },
+          (key, value) => (typeof value === 'bigint' ? value.toString() : value)
+        )
+      );
+
+      setResult(serializedResponse);
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-update creator address when wallet connects
+  useEffect(() => {
+    if (address && isConnected) {
+      setFormData(prev => ({ ...prev, creatorAddress: address }));
+    }
+  }, [address, isConnected]);
+
   return (
     <div className="max-w-md mx-auto p-4">
       <h1 className="text-xl font-bold mb-4">Edit IP Asset</h1>
+
+      <div className="mb-6">
+        <ConnectButton />
+        {isConnected && address && (
+          <p className="text-sm text-gray-600 mt-2">
+            Connected: {address}
+          </p>
+        )}
+      </div>
+
+      {!isConnected && (
+        <div className="mb-4 p-4 bg-yellow-100 rounded">
+          <p className="text-yellow-800">Please connect your wallet to edit an IP asset.</p>
+        </div>
+      )}
+
       <div className="mb-4">
         <label className="block text-sm">IP Asset ID</label>
         <div className="flex space-x-2">
@@ -119,6 +189,7 @@ export default function EditIpForm() {
           </button>
         </div>
       </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm">Title</label>
@@ -167,9 +238,13 @@ export default function EditIpForm() {
             type="text"
             name="creatorAddress"
             value={formData.creatorAddress}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-gray-100"
+            readOnly
+            title="This will be automatically set to your connected wallet address"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            This will be automatically set to your connected wallet address
+          </p>
         </div>
         <div>
           <label className="block text-sm">Image URL</label>
@@ -264,7 +339,7 @@ export default function EditIpForm() {
         </div>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !isConnected}
           className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
         >
           {loading ? 'Updating...' : 'Update IP Asset'}
