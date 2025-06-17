@@ -1,29 +1,3 @@
-// // app/page.tsx
-// 'use client';
-
-// import { ConnectButton } from '@rainbow-me/rainbowkit';
-// import WalletProvider from './components/WalletProvider';
-// import ImageGenerator from './components/imageGenerator';
-// import RegisterForm from './components/registrationForm';
-// import RegisterDerivativeForm from './components/RegisterDerivativeCommercialForm';
-// import MintLicenseForm from './components/MintLicenseForm';
-
-// export default function Home() {
-//   return (
-//     <WalletProvider>
-//       <main className="p-4">
-//         <h1 className="text-2xl font-bold mb-4">Story Protocol PoC</h1>
-//         <ConnectButton />
-//         <RegisterForm />
-//         <RegisterDerivativeForm />
-//         <MintLicenseForm />
-//         <ImageGenerator />
-//       </main>
-//     </WalletProvider>
-//   );
-// }
-
-
 'use client';
 
 import { useState } from 'react';
@@ -35,8 +9,9 @@ import MintLicenseForm from './components/MintLicenseForm';
 import ImageGenerator from './components/imageGenerator';
 import RegisterDerivativeNonCommercial from './components/RegisterDerivativeNonCommercial';
 import EditIpForm from './components/EditIpForm';
+// import TransferRoyaltyForm from './components/transfer-royalty';
+import ClaimRevenueForm from './components/claimRevenue';
 // import RegisterCustom from './components/RegisterCustom';
-// import MintDerivativeForm from './components/MintDerivativeForm';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('register');
@@ -45,10 +20,12 @@ export default function Home() {
     { id: 'register', label: 'Register IP Asset', component: <RegisterForm /> },
     { id: 'edit-ip', label: 'Edit IP Asset', component: <EditIpForm /> },
     // { id: 'register-custom', label: 'Register IP Asset custom', component: <RegisterCustom /> },
-    { id: 'derivative', label: 'Register Derivative', component: <RegisterDerivativeForm /> },
     { id: 'mint-license', label: 'Mint License', component: <MintLicenseForm /> },
+    // { id: 'transfer-royalty', label: 'transfer-royalty', component: <TransferRoyaltyForm /> },
     {id: 'derivative-noncom', label: 'Register Derivative non com', component: <RegisterDerivativeNonCommercial />},
+    { id: 'derivative', label: 'Register Derivative', component: <RegisterDerivativeForm /> },
     // { id: 'mint-derivative', label: 'Mint Derivative', component: <MintDerivativeForm /> },
+     { id: 'claim-revenue', label: 'claim revenue', component: <ClaimRevenueForm /> },
     { id: 'image', label: 'Generate Image', component: <ImageGenerator /> },
   ];
 
