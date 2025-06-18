@@ -22,10 +22,11 @@ export default function Home() {
     // { id: 'register-custom', label: 'Register IP Asset custom', component: <RegisterCustom /> },
     { id: 'mint-license', label: 'Mint License', component: <MintLicenseForm /> },
     // { id: 'transfer-royalty', label: 'transfer-royalty', component: <TransferRoyaltyForm /> },
-    {id: 'derivative-noncom', label: 'Register Derivative non com', component: <RegisterDerivativeNonCommercial />},
+    
     { id: 'derivative', label: 'Register Derivative', component: <RegisterDerivativeForm /> },
     // { id: 'mint-derivative', label: 'Mint Derivative', component: <MintDerivativeForm /> },
      { id: 'claim-revenue', label: 'claim revenue', component: <ClaimRevenueForm /> },
+     {id: 'derivative-noncom', label: 'Register Derivative non com', component: <RegisterDerivativeNonCommercial />},
     { id: 'image', label: 'Generate Image', component: <ImageGenerator /> },
   ];
 
