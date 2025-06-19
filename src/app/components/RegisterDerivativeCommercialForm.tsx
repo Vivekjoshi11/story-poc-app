@@ -836,13 +836,13 @@ export default function RegisterCommercialDerivative() {
           >
             View on Explorer
           </a>
-          <button
+          {/* <button
             onClick={handleClaimRevenue}
             disabled={claimLoading || !isConnected}
             className="mt-4 w-full p-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
           >
             {claimLoading ? 'Claiming Revenue...' : 'Claim Revenue for Parent IP'}
-          </button>
+          </button> */}
         </div>
       )}
 
