@@ -11,6 +11,7 @@ import RegisterDerivativeNonCommercial from './components/RegisterDerivativeNonC
 import EditIpForm from './components/EditIpForm';
 // import TransferRoyaltyForm from './components/transfer-royalty';
 import ClaimRevenueForm from './components/claimRevenue';
+import SwapButton from './components/SwapButton';
 // import RegisterCustom from './components/RegisterCustom';
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
      { id: 'claim-revenue', label: 'claim revenue', component: <ClaimRevenueForm /> },
      {id: 'derivative-noncom', label: 'Register Derivative non com', component: <RegisterDerivativeNonCommercial />},
     { id: 'image', label: 'Generate Image', component: <ImageGenerator /> },
+    { id: 'swap', label: 'swapIPtoUSDC', component: <SwapButton /> },
   ];
 
   return (
